@@ -1,88 +1,87 @@
 
-# Economic Feature Regression – README
+# Exploring Whether Macroeconomic Indicators Can Predict Asset Prices
 
-This script downloads historical price data for a ticker (e.g., `SPY`) and combines it with macroeconomic time series (e.g., CPI, unemployment rate, etc.). It then trains and evaluates a regression model (a pipeline of scaling, polynomial features, and Ridge regression) using `GridSearchCV`. The prediction performance is visualized and saved as an image.
+This project is **not** a production-ready model.  
+It is a **simple empirical test** to answer a conceptual question:
 
----
+> *Can broad macroeconomic variables (e.g. CPI, unemployment, sentiment, payrolls) be used to predict the price of a financial asset like SPY?  
+And if so — how strong is that relationship?*
 
-## Requirements
+The script loads price history from Yahoo Finance and combines it with several macroeconomic time series from the Federal Reserve (FRED). A very basic regression model is then fitted to check **correlation / explanatory power**, not to provide tradeable forecasts.
 
-### 1. Install Dependencies
-
-```bash
-pip install pandas fredapi yfinance numpy matplotlib seaborn scikit-learn
-```
-
-### 2. Provide FRED API Key
-
-Create a file named `configs.json` in the project root:
-
-```json
-{
-    "fred_api_key": "YOUR_FRED_KEY_HERE"
-}
-```
+The goal is **exploration**, not **prediction**.
 
 ---
 
-## How It Works
+## Methodology
 
-| Component | Description |
-|------------|--------------|
-| `GetData.get_ticker()` | Downloads OHLC data via `yfinance` and caches it in `/data`. |
-| `GetData.get_macroeconomics(features)` | Downloads macroeconomic series from FRED and caches them in `/data`. |
-| `model(xdata, ydata)` | Performs Train/Test split and tunes Ridge regression via `GridSearchCV` + `TimeSeriesSplit`. |
-| `plot_eval(estimate, actual, ticker)` | Visualizes prediction vs. actual and residuals. |
+1. **Data Sources**
+   - Asset prices via `yfinance` (adjusted close)
+   - Macroeconomic indicators from FRED:
+     - CPI (`CPIAUCSL`)
+     - Producer Prices (`PPIACO`)
+     - Personal Consumption Expenditures (`PCEPI`)
+     - Unemployment Rate (`UNRATE`)
+     - Consumer Sentiment (`UMCSENT`)
+     - Payroll Employment (`PAYEMS`)
+
+2. **Objective**
+
+   Instead of trying to forecast future prices, we ask:
+
+   - *If macro conditions at time `t` are known, how much of the price level of an asset at time `t` can be explained by them?*
+   - *Is the relationship stable or noisy?*
+   - *Does it behave linearly or require higher-order transformation?*
+
+3. **Modeling Approach**
+
+   - Use a regression model (`Ridge Regression`) with polynomial expansion.
+   - Apply `TimeSeriesSplit` cross-validation to avoid leakage.
+   - Evaluate fit on a holdout period.
+   - Visualize **Prediction vs Actual** and **Residual Structure**.
 
 ---
 
-## Run
+## What This Is *Not*
+
+- ❌ It is *not* a trading strategy  
+- ❌ It is *not* a causal model  
+- ❌ It does *not* claim macro → price directionality  
+- ❌ It is *not* optimized for performance or scalability
+
+This is purely a **statistical correlation test** packaged in code.
+
+---
+
+## How to Run
 
 ```bash
 python your_script.py
 ```
 
-Default settings:
+Include a `configs.json` file with your FRED key:
 
-- **Ticker:** `SPY`
-- **Macro features:** `['CPIAUCSL','PPIACO','PCEPI','UNRATE','UMCSENT','PAYEMS']`
-
-Resulting plot will be saved to:
-
-```
-/plots/econs_SPY.png
+```json
+{ "fred_api_key": "YOUR_FRED_KEY_HERE" }
 ```
 
 ---
 
-## Customization
+## Interpretation of Results
 
-Change ticker:
+If the model produces **high R² scores and structured residuals**, it suggests macro variables contain meaningful pricing information.
 
-```python
-ticker = 'AAPL'
-```
+If the residuals are **random and R² is low**, the conclusion is straightforward:
 
-Change macro indicators:
+> *Macro data alone is insufficient for price-level estimation at this granularity.*
 
-```python
-feature_df = obj.get_macroeconomics(['FEDFUNDS','M2SL','INDPRO'])
-```
+Either outcome is valuable.
 
 ---
 
-## Limitations
+## Future Extensions
 
-- Feature and ticker data must be equal in length, otherwise execution stops.
-- This is **not a forecasting model** — pure in-sample regression.
-- Hyperparameter search may take time on large datasets.
-
----
-
-## Future Improvements
-
-- Auto-align time indexes instead of hard-stopping on length mismatch.
-- Add multi-step forecasting (e.g., with RNNs or lag features).
-- Export predictions to CSV.
-
----
+- Lagged macro variables to test delayed relationships
+- Asset returns instead of price levels
+- Rolling window regression to test **stability through regimes**
+- Statistical comparison across asset classes (equities vs commodities vs FX)
